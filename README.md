@@ -32,3 +32,27 @@ Then visit `http://localhost:8080`.
 ## Deployment
 
 The GitHub Actions workflow in `.github/workflows/pages.yml` deploys the site to GitHub Pages on pushes to `main` and can also be run manually.
+
+## Scripts
+
+### `scripts/milestone_changes.py`
+
+Lists issues and pull requests that have been added to a `vX.Y.Z` (strict SemVer) milestone in the last 24 hours across the three roadmap repos, grouped per repo and per version. Output is Markdown with nested lists, suitable for pasting into Slack.
+
+Requires [`uv`](https://docs.astral.sh/uv/) and a GitHub token (GraphQL is used, so authentication is mandatory). If the [`gh`](https://cli.github.com/) CLI is installed and logged in, you can source a token from it:
+
+```sh
+uv run scripts/milestone_changes.py --token "$(gh auth token)"
+```
+
+Or set `GITHUB_TOKEN` in the environment:
+
+```sh
+export GITHUB_TOKEN=...
+uv run scripts/milestone_changes.py
+```
+
+Options:
+
+- `--hours N` — override the look-back window (default: 24).
+- `--token TOKEN` — supply a token explicitly (default: `$GITHUB_TOKEN`).

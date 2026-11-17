@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "github-milestone-roadmap"
+dynamic = ["version"]
+description = "Build a live roadmap website from GitHub release milestones across several repositories"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Leif Denby" }]
+dependencies = ["httpx>=0.27"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Topic :: Software Development :: Documentation",
+]
+
+[project.urls]
+Repository = "https://github.com/mllam/github-milestone-roadmap"
+Changelog = "https://github.com/mllam/github-milestone-roadmap/blob/main/CHANGELOG.md"
+
+[project.scripts]
+github-milestone-roadmap = "github_milestone_roadmap.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "pre-commit>=3"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/github_milestone_roadmap"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

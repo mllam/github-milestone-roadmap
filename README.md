@@ -1,58 +1,117 @@
-# MLLAM Roadmap
+# github-milestone-roadmap
 
-Static GitHub Pages site for the MLLAM community roadmap.
+Build a live roadmap website from GitHub release milestones across several
+repositories.
 
-The page queries the public GitHub API directly from the browser and shows open issues and pull requests assigned to open roadmap milestones in these repositories:
+The generated site is a single static page. It reads milestones, issues and
+pull requests from the public GitHub API in the visitor's browser, so the
+roadmap is always current without rebuilding the site. It is used for the
+[mllam community roadmap](https://mllam.github.io/roadmap).
 
-- `mllam/neural-lam`
-- `mllam/mllam-data-prep`
-- `mllam/weather-model-graphs`
+## The milestone convention
 
-Milestone naming controls how items are grouped:
+Milestone names decide where an item appears:
 
-- `vX.Y.Z` means the item is on the roadmap for that release.
-- `vX.Y.Z (proposed)` means the item is proposed for that release.
+- `vX.Y.Z`: the item is **on the roadmap** for that release.
+- `vX.Y.Z (proposed)`: the item is **proposed** for that release.
 
-Only open issues and open pull requests are displayed.
+For each release the page shows three lanes: open issues/PRs on the roadmap,
+open proposed issues/PRs, and pull requests already merged into the `vX.Y.Z`
+milestone. Open pull requests also show their review status. Milestones with
+other names are ignored.
 
-To reduce GitHub API usage, the page makes three base requests per repository: one for open milestones, one for open issues/pull requests, and one for recently closed pull requests so merged PRs can be shown. Displayed open pull requests also fetch their cached review status. Responses are cached in the browser's `localStorage` for 15 minutes, and stale cached data is used if GitHub's unauthenticated API rate limit is reached.
+## Usage
+
+Write a `roadmap.toml` describing your roadmap (see
+[`examples/roadmap.toml`](examples/roadmap.toml) for every option):
+
+```toml
+title = "My Community Roadmap"
+subtitle = "Upcoming work across our packages"
+source_url = "https://github.com/my-org"
+
+[home]
+text = "My Community"
+url = "/"
+
+[[repos]]
+owner = "my-org"
+name = "my-package"
+description = "What this package does."
+```
+
+Then build the site:
+
+```sh
+uvx github-milestone-roadmap build --config roadmap.toml --output _site/roadmap
+```
+
+This writes `index.html`, `app.js`, `styles.css` and `config.json` to the
+output directory. The page only uses relative paths, so it can be served from
+any subpath.
+
+### In a GitHub Pages workflow
+
+Pin the version so that roadmap tool updates reach your site only when you bump
+it:
+
+```yaml
+      - uses: astral-sh/setup-uv@v6
+      - name: Build roadmap
+        run: uvx github-milestone-roadmap==0.1.0 build --config roadmap.toml --output _site/roadmap
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+```
+
+See the [mllam.github.io deploy workflow](https://github.com/mllam/mllam.github.io/blob/main/.github/workflows/pages.yml)
+for a complete example.
+
+### API usage and caching
+
+Without authentication, the GitHub API allows 60 requests per hour per
+visitor. The page makes three requests per repository (open milestones, open
+issues/PRs, recently closed PRs) plus one per displayed open pull request for
+its review status. Responses are cached in the browser's `localStorage` for 15
+minutes under the config's `cache_key`, and stale cached data is shown if the
+rate limit is reached.
+
+## Milestone changes report
+
+`changes` prints the issues and pull requests added to a `vX.Y.Z` milestone in
+the last 24 hours across the configured repositories, grouped per repository
+and version. The output is Markdown with nested lists, suitable for pasting
+into Slack.
+
+It uses the GraphQL API, so a GitHub token is required. With the
+[`gh`](https://cli.github.com/) CLI logged in:
+
+```sh
+uvx github-milestone-roadmap changes --config roadmap.toml --token "$(gh auth token)"
+```
+
+or set `GITHUB_TOKEN` in the environment. Use `--hours N` to change the
+look-back window.
 
 ## Development
 
-Open `index.html` in a browser, or serve the directory with any static file server.
-
-For example:
-
 ```sh
-python3 -m http.server 8080
+uv run pytest
+uv run pre-commit install   # ruff lint and format on commit
 ```
 
-Then visit `http://localhost:8080`.
-
-## Deployment
-
-The GitHub Actions workflow in `.github/workflows/pages.yml` deploys the site to GitHub Pages on pushes to `main` and can also be run manually.
-
-## Scripts
-
-### `scripts/milestone_changes.py`
-
-Lists issues and pull requests that have been added to a `vX.Y.Z` (strict SemVer) milestone in the last 24 hours across the three roadmap repos, grouped per repo and per version. Output is Markdown with nested lists, suitable for pasting into Slack.
-
-Requires [`uv`](https://docs.astral.sh/uv/) and a GitHub token (GraphQL is used, so authentication is mandatory). If the [`gh`](https://cli.github.com/) CLI is installed and logged in, you can source a token from it:
+To preview the page locally:
 
 ```sh
-uv run scripts/milestone_changes.py --token "$(gh auth token)"
+uv run github-milestone-roadmap build --config examples/roadmap.toml --output _site
+python3 -m http.server --directory _site 8080
 ```
 
-Or set `GITHUB_TOKEN` in the environment:
+Then visit http://localhost:8080. The page needs `config.json` from the build,
+so opening `index.html` directly from disk will not work.
 
-```sh
-export GITHUB_TOKEN=...
-uv run scripts/milestone_changes.py
-```
+## Releasing
 
-Options:
-
-- `--hours N` — override the look-back window (default: 24).
-- `--token TOKEN` — supply a token explicitly (default: `$GITHUB_TOKEN`).
+Versions come from git tags (hatch-vcs). To release, update `CHANGELOG.md`,
+merge to `main`, then tag `vX.Y.Z` on `main` and push the tag. The `release`
+workflow publishes to PyPI with trusted publishing.

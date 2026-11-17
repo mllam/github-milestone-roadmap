@@ -1,21 +1,9 @@
-const ORG = "mllam";
 const API_ROOT = "https://api.github.com";
-const CACHE_PREFIX = "mllam-roadmap:";
 const CACHE_TTL_MS = 15 * 60 * 1000;
-const REPOS = [
-  {
-    name: "neural-lam",
-    description: "Machine learning weather model training and inference package.",
-  },
-  {
-    name: "mllam-data-prep",
-    description: "Data preparation workflows for MLLAM model development.",
-  },
-  {
-    name: "weather-model-graphs",
-    description: "Graph structures and utilities for weather model domains.",
-  },
-];
+
+// Filled from config.json, which `github-milestone-roadmap build` writes next to this file.
+let CACHE_PREFIX = "roadmap:";
+let REPOS = [];
 
 const roadmapEl = document.querySelector("#roadmap");
 
@@ -25,13 +13,37 @@ if ("scrollRestoration" in history) {
 
 loadRoadmap();
 
-function loadRoadmap() {
+async function loadRoadmap() {
+  try {
+    const config = await loadConfig();
+    CACHE_PREFIX = `${config.cache_key}:`;
+    REPOS = config.repos;
+  } catch (error) {
+    const message = document.createElement("p");
+    message.className = "empty";
+    message.textContent = `Could not load the roadmap configuration (config.json): ${apiErrorMessage(error)}`;
+    roadmapEl.replaceChildren(message);
+    return;
+  }
+
   renderRoadmap(REPOS.map((repo) => ({ ...repo, loading: true, releases: [] })));
   REPOS.forEach((repo) => refreshPackage(repo.name));
 
   if (!location.hash) {
     window.scrollTo({ top: 0, left: 0 });
   }
+}
+
+async function loadConfig() {
+  const response = await fetch("config.json", { cache: "no-cache" });
+  if (!response.ok) {
+    throw new Error(`request failed with ${response.status} ${response.statusText}`);
+  }
+  return response.json();
+}
+
+function repoUrl(repo) {
+  return `https://github.com/${repo.owner}/${repo.name}`;
 }
 
 async function refreshPackage(repoName, options = {}) {
@@ -46,9 +58,9 @@ async function refreshPackage(repoName, options = {}) {
 async function loadPackageRoadmap(repo, options = {}) {
   try {
     const [milestones, items, closedPulls] = await Promise.all([
-      githubJson(`/repos/${ORG}/${repo.name}/milestones?state=open&per_page=100`, options),
-      githubJson(`/repos/${ORG}/${repo.name}/issues?state=open&per_page=100`, options),
-      githubJson(`/repos/${ORG}/${repo.name}/pulls?state=closed&sort=updated&direction=desc&per_page=100`, options),
+      githubJson(`/repos/${repo.owner}/${repo.name}/milestones?state=open&per_page=100`, options),
+      githubJson(`/repos/${repo.owner}/${repo.name}/issues?state=open&per_page=100`, options),
+      githubJson(`/repos/${repo.owner}/${repo.name}/pulls?state=closed&sort=updated&direction=desc&per_page=100`, options),
     ]);
     const releases = groupMilestonesByRelease(milestones);
     const itemsByMilestone = groupItemsByMilestone(items);
@@ -60,17 +72,17 @@ async function loadPackageRoadmap(repo, options = {}) {
       release.merged = mergedPullsForMilestone(mergedPullsByMilestone, release.roadmapMilestone);
     }
 
-    await addReviewStatuses(repo.name, releases, options);
+    await addReviewStatuses(repo, releases, options);
 
     return {
       ...repo,
-      url: `https://github.com/${ORG}/${repo.name}`,
+      url: repoUrl(repo),
       releases: releases.filter((release) => release.roadmap.length > 0 || release.proposed.length > 0 || release.merged.length > 0),
     };
   } catch (error) {
     return {
       ...repo,
-      url: `https://github.com/${ORG}/${repo.name}`,
+      url: repoUrl(repo),
       error: apiErrorMessage(error),
       releases: [],
     };
@@ -172,7 +184,7 @@ function mergedPullsForMilestone(pullsByMilestone, milestone) {
     .sort((a, b) => new Date(b.mergedAt) - new Date(a.mergedAt));
 }
 
-async function addReviewStatuses(repoName, releases, options = {}) {
+async function addReviewStatuses(repo, releases, options = {}) {
   const pullRequests = releases.flatMap((release) => [
     ...release.roadmap.filter((item) => item.type === "pr"),
     ...release.proposed.filter((item) => item.type === "pr"),
@@ -180,7 +192,7 @@ async function addReviewStatuses(repoName, releases, options = {}) {
 
   await Promise.all(pullRequests.map(async (item) => {
     try {
-      const reviews = await githubJson(`/repos/${ORG}/${repoName}/pulls/${item.number}/reviews?per_page=100`, options);
+      const reviews = await githubJson(`/repos/${repo.owner}/${repo.name}/pulls/${item.number}/reviews?per_page=100`, options);
       item.reviewStatus = reviewStatusFromReviews(reviews);
     } catch {
       item.reviewStatus = null;
@@ -298,7 +310,7 @@ function renderPackage(pkg) {
 
   const link = document.createElement("a");
   link.className = "repo-link";
-  link.href = pkg.url || `https://github.com/${ORG}/${pkg.name}`;
+  link.href = pkg.url || repoUrl(pkg);
   link.rel = "noreferrer";
   link.textContent = "View repo";
 

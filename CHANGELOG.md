@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.1.0](https://github.com/mllam/github-milestone-roadmap/releases/tag/v0.1.0) - 2026-11-17
+
+First release.
+
 ### Added
 
 - Package the mllam roadmap page as the reusable `github-milestone-roadmap`

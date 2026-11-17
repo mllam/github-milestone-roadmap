@@ -34,6 +34,7 @@ source_url = "https://github.com/my-org"
 text = "My Community"
 url = "/"
 
+# One [[repos]] entry per repository; add as many as you like, in display order.
 [[repos]]
 owner = "my-org"
 name = "my-package"

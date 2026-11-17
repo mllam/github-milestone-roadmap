@@ -1,0 +1,37 @@
+# Example configuration for github-milestone-roadmap.
+# This is the configuration used for https://mllam.github.io/roadmap
+
+# Browser tab title (required).
+title = "MLLAM Roadmap"
+# Main heading (default: "Community Roadmap").
+heading = "Community Roadmap"
+# Line under the heading (default: none).
+subtitle = "Upcoming work across the MLLAM packages"
+# <meta name="description"> (default: subtitle, else title).
+description = "Roadmap for the MLLAM community packages."
+# GitHub link in the top-right corner (default: no link).
+source_url = "https://github.com/mllam"
+# Prefix for the browser cache of GitHub API responses (default: slug of title).
+# Give each roadmap on the same domain its own key.
+cache_key = "mllam-roadmap"
+
+# Brand link in the top-left corner (default: text = title, url = "/").
+[home]
+text = "MLLAM"
+url = "/"
+
+# Repositories, in display order. `name` must be unique: it is the page anchor.
+[[repos]]
+owner = "mllam"
+name = "neural-lam"
+description = "Machine learning weather model training and inference package."
+
+[[repos]]
+owner = "mllam"
+name = "mllam-data-prep"
+description = "Data preparation workflows for MLLAM model development."
+
+[[repos]]
+owner = "mllam"
+name = "weather-model-graphs"
+description = "Graph structures and utilities for weather model domains."
